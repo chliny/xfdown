@@ -74,6 +74,7 @@ class XF:
     """
 
     _player="totem"
+    _addurl=''
 
     __cookiepath = '%s/cookie'%module_path
     __verifyimg  = '%s/verify.jpg'%module_path
@@ -118,10 +119,12 @@ class XF:
         request.install_opener(opener)
         
 
-        if cookieload:
-            self.main()
-        else:
+        if not cookieload:
             self.__Login(True)
+        else:
+            if self._addurl != '':
+                self.__addtask()
+            self.main()
     def __request(self,url,data=None,savecookie=False):
         """
             请求url
@@ -340,8 +343,11 @@ class XF:
 
                     
     def __addtask(self):
-        _print ("请输入下载地址:")
-        url=raw_input()
+        if self._addurl == '':
+            _print ("请输入下载地址:")
+            url=raw_input()
+        else:
+            url = self._addurl
         filename=self.getfilename_url(url)
         data={"down_link":url,\
                 "filename":filename,\
@@ -437,7 +443,11 @@ def usage():
     print("\n\nsee https://github.com/kikyous/xfdown for most newest version and more information")
 try:
     xf = XF()
-    opts, args = getopt.getopt(sys.argv[1:], "hd:p:", ["help", "downloaddir=","player="])
+    if not hasattr(xf,"_downpath"):
+        xf._downpath = os.path.expanduser("~/Download")
+    os.makedirs(xf._downpath) if not os.path.exists(xf._downpath) else None
+
+    opts, args = getopt.getopt(sys.argv[1:], "hd:p:A:", ["help", "downloaddir=","player=","add="])
     for o, v in opts:
         if o in ("-h", "--help"):
             usage()
@@ -446,11 +456,10 @@ try:
             xf._downpath=os.path.abspath(os.path.expanduser(v))
         elif o in ("-p", "--player"):
             xf._player=v
+        elif o  in ("-A", "--add"):
+            xf._addurl=v
         else:
             assert False, "unhandled option"
-    if not hasattr(xf,"_downpath"):
-        xf._downpath = os.path.expanduser("~/下载")
-    os.makedirs(xf._downpath) if not os.path.exists(xf._downpath) else None
 
     xf.start()
 except KeyboardInterrupt:
