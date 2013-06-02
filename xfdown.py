@@ -349,12 +349,40 @@ class XF:
         else:
             url = self._addurl
         filename=self.getfilename_url(url)
-        data={"down_link":url,\
-                "filename":filename,\
-                "filesize":0,\
-                }
-        urlv="http://lixian.qq.com/handler/lixian/add_to_lixian.php"
-        str = self.__request(urlv,data)
+        if os.path.isfile(url):
+            filesize=os.path.getsize(filename) 
+            orisize = filesize
+            dw=["B","K","M","G"]
+            for i in range(4):
+                _dw=dw[i]
+                if filesize>=1024:
+                    filesize=filesize/1024
+                else:
+                    break
+            filesize="%.1f%s"%(filesize,_dw)
+            filecontent = open(filename,'rb').read()
+            hash = self.__md5(filecontent)
+
+            data={"name":"myfile",\
+                  "ret":0,\
+                  "hash":hash,\
+                  "files":[{"file_name":filename,\
+                            "file_size":filesize,\
+                            "file_size_ori":orisize,\
+                            "file_index":0,\
+                  }]
+                 }
+            print data
+            urlv="http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo"
+            str = self.__request(urlv,data)
+            print str
+        else:
+            data={"down_link":url,\
+                    "filename":filename,\
+                    "filesize":0,\
+                    }
+            urlv="http://lixian.qq.com/handler/lixian/add_to_lixian.php"
+            str = self.__request(urlv,data)
 
     def __online(self):
         _print("输入需要在线观看的任务序号")
@@ -440,7 +468,8 @@ def usage():
     print("  -h,--help\tshow this usage and exit.")
     print("  -d <dir>,--downloaddir=<dir>\n\tset the download dir.")
     print("  -p <player>,--player=<player>\n\tset the player.")
-    print("\n\nsee https://github.com/kikyous/xfdown for most newest version and more information")
+    print("  -A <url>,--add=<url>\n\tadd the url to offline task.")
+    print("\n\nsee https://github.com/chliny/xfdown for most newest version and more information")
 try:
     xf = XF()
     if not hasattr(xf,"_downpath"):
