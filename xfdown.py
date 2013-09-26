@@ -88,6 +88,7 @@ class XF:
         if sys.version_info >= (3,0):
           H = self.__md5(I + bytes(verifycode[2],encoding="ISO-8859-1"))
         else:
+          print I+verifycode[2]
           H = self.__md5(I + verifycode[2])
         G = self.__md5(H + verifycode[1].upper())
 
@@ -96,7 +97,7 @@ class XF:
     def __md5(self,item):
         if sys.version_info >= (3,0):
             try:
-              item=item.encode("u8")
+              item=item.encode("utf8")
             except:
               pass
         return hashlib.md5(item).hexdigest().upper()
@@ -219,7 +220,7 @@ class XF:
             urlv = 'http://lixian.qq.com/handler/lixian/get_lixian_list.php'
             res = self.__request(urlv,{})
             res = json.JSONDecoder().decode(res)
-            if res["msg"]==_('未登录!'):
+            if res is None or res["msg"]==_('未登录!'):
                 res=json.JSONDecoder().decode(self.__getlogin())
                 if res["msg"]==_('未登录!'):
                     self.__Login()
@@ -350,32 +351,56 @@ class XF:
             url = self._addurl
         filename=self.getfilename_url(url)
         if os.path.isfile(url):
-            filesize=os.path.getsize(filename) 
-            orisize = filesize
-            dw=["B","K","M","G"]
-            for i in range(4):
-                _dw=dw[i]
-                if filesize>=1024:
-                    filesize=filesize/1024
-                else:
-                    break
-            filesize="%.1f%s"%(filesize,_dw)
-            filecontent = open(filename,'rb').read()
-            hash = self.__md5(filecontent)
+            import bencode
+            from poster.encode import multipart_encode
+            from poster.streaminghttp import register_openers
 
-            data={"name":"myfile",\
-                  "ret":0,\
-                  "hash":hash,\
-                  "files":[{"file_name":filename,\
-                            "file_size":filesize,\
-                            "file_size_ori":orisize,\
-                            "file_index":0,\
-                  }]
+
+            infodict = bencode.bdecode(open(url).read())
+            btfilename = infodict['info']['name']
+            btfilesize = infodict['info']['length']
+            btfilecontent = infodict['info']['pieces']
+            bthash = hashlib.sha1(btfilecontent).hexdigest().upper()
+            print bthash
+
+            #fileinfo = json.dumps(infodict,ensure_ascii=False)
+            fileinfo = open(url,'rb').read()
+            #print type(fileinfo['info']['pieces'])
+            #fileinfo['info']['pieces'] = fileinfo['info']['pieces'].encode('utf8')
+            data1={"name":"myfile",\
+                   "Content-Disposition":"form-data",\
+                   "filename":filename,\
+                   "Content-Type":"application/x-bittorrent",\
+                    "myfile":fileinfo,\
+                  }
+            data1={"myfile":fileinfo}
+            #print data1
+            data2={"cmd":"add_bt_task",\
+                  "filename":btfilename,\
+                  "filesize":btfilesize,\
+                  "hash":bthash,\
+                  "index":"0",\
+                  "taskname":btfilename,\
+                   "r":random.random()
                  }
-            print data
-            urlv="http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo"
-            str = self.__request(urlv,data)
-            print str
+
+            urlv1="http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo"
+            #istr = self.__request(urlv1,data1)
+
+            #cookieOpener = request.build_opener(request.HTTPCookieProcessor(cookiejar.MozillaCookieJar(self.__cookiepath)))
+            #request.install_opener(cookieOpener)
+
+            register_openers()
+            datagen, headers = multipart_encode([("#task_new_bt",open(url))])
+            req = request.Request(urlv1,datagen,headers)
+            #urlopener = request.urlopen(req)
+            #istr = urlopener.read()
+            print istr
+            #print urlopener
+            
+            urlv2="http://lixian.qq.com/handler/xfjson2012.php"
+            #istr = self.__request(urlv2,data2)
+            #print istr
         else:
             data={"down_link":url,\
                     "filename":filename,\
@@ -473,7 +498,7 @@ def usage():
 try:
     xf = XF()
     if not hasattr(xf,"_downpath"):
-        xf._downpath = os.path.expanduser("~/Download")
+        xf._downpath = os.path.expanduser("~/Video/")
     os.makedirs(xf._downpath) if not os.path.exists(xf._downpath) else None
 
     opts, args = getopt.getopt(sys.argv[1:], "hd:p:A:", ["help", "downloaddir=","player=","add="])
@@ -492,6 +517,9 @@ try:
 
     xf.start()
 except KeyboardInterrupt:
+    print (" exit now.")
+    sys.exit(2)
+except EOFError:
     print (" exit now.")
     sys.exit(2)
 except getopt.GetoptError as err:
