@@ -349,57 +349,59 @@ class XF:
             url=raw_input()
         else:
             url = self._addurl
+        uniurl = self.__toUnicode(url)
+        url = uniurl.encode("utf8")
+
         filename=self.getfilename_url(url)
         if os.path.isfile(url):
-            import bencode
-            from poster.encode import multipart_encode
-            from poster.streaminghttp import register_openers
+            import libtorrent
+            torinfo = libtorrent.torrent_info(uniurl)
+            torhash = torinfo.info_hash()
+            if torhash.is_all_zeros():
+                return
+            bthash = str(torhash).upper()
+            #print bthash
 
+            btfilenames = []
+            btindexs = []
+            btsizes = []
+            index = 0
+            for fileentry in torinfo.files():
+                btfilenames.append(fileentry.path)
+                btindexs.append(str(index))
+                index += 1
+                btsizes.append(str(fileentry.size))
 
-            infodict = bencode.bdecode(open(url).read())
-            btfilename = infodict['info']['name']
-            btfilesize = infodict['info']['length']
-            btfilecontent = infodict['info']['pieces']
-            bthash = hashlib.sha1(btfilecontent).hexdigest().upper()
-            print bthash
+            btindex = "#".join(btindexs)
+            btfilename = "#".join(btfilenames)
+            btfilesize = "#".join(btsizes)
 
-            #fileinfo = json.dumps(infodict,ensure_ascii=False)
             fileinfo = open(url,'rb').read()
-            #print type(fileinfo['info']['pieces'])
-            #fileinfo['info']['pieces'] = fileinfo['info']['pieces'].encode('utf8')
-            data1={"name":"myfile",\
-                   "Content-Disposition":"form-data",\
-                   "filename":filename,\
-                   "Content-Type":"application/x-bittorrent",\
-                    "myfile":fileinfo,\
+            data1={"name":"myfile",
+                   "Content-Disposition":"form-data",
+                   "filename":filename,
+                   "Content-Type":"application/x-bittorrent",
+                    "myfile":fileinfo,
                   }
-            data1={"myfile":fileinfo}
             #print data1
-            data2={"cmd":"add_bt_task",\
-                  "filename":btfilename,\
-                  "filesize":btfilesize,\
-                  "hash":bthash,\
-                  "index":"0",\
-                  "taskname":btfilename,\
+            data2={"cmd":"add_bt_task",
+                   #多个文件名以#隔开
+                  "filename":btfilename,
+                   #多个文件大小以#隔开
+                  "filesize":btfilesize,
+                  "hash":bthash,
+                   #以#隔开多个文件的offset
+                  "index":btindex,
+                  "taskname":filename,
                    "r":random.random()
                  }
 
             urlv1="http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo"
-            #istr = self.__request(urlv1,data1)
-
-            #cookieOpener = request.build_opener(request.HTTPCookieProcessor(cookiejar.MozillaCookieJar(self.__cookiepath)))
-            #request.install_opener(cookieOpener)
-
-            register_openers()
-            datagen, headers = multipart_encode([("#task_new_bt",open(url))])
-            req = request.Request(urlv1,datagen,headers)
-            #urlopener = request.urlopen(req)
-            #istr = urlopener.read()
-            print istr
-            #print urlopener
+            istr = self.__request(urlv1,data1)
+            #print istr
             
             urlv2="http://lixian.qq.com/handler/xfjson2012.php"
-            #istr = self.__request(urlv2,data2)
+            istr = self.__request(urlv2,data2)
             #print istr
         else:
             data={"down_link":url,\
@@ -407,7 +409,22 @@ class XF:
                     "filesize":0,\
                     }
             urlv="http://lixian.qq.com/handler/lixian/add_to_lixian.php"
-            str = self.__request(urlv,data)
+            istr = self.__request(urlv,data)
+            print istr
+
+    def __toUnicode(self,word):
+        if isinstance(word,unicode):
+            print word
+            return word.strip()
+        if not isinstance(word,str):
+            return u""
+        word = word.strip()
+        try:
+            word = word.decode("utf8")
+        except:
+            word = word.decode("GBK")
+
+        return word
 
     def __online(self):
         _print("输入需要在线观看的任务序号")
