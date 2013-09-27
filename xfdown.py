@@ -353,12 +353,20 @@ class XF:
         url = uniurl.encode("utf8")
 
         filename=self.getfilename_url(url)
-        if os.path.isfile(url):
-            import libtorrent
-            torinfo = libtorrent.torrent_info(uniurl)
+        if os.path.isfile(url) or url.startswith("magnet:"):
+            from libtorrent import torrent_info
+            pid  = 1
+            if url.startswith("magnet:"):
+                pid = os.fork()
+                if pid:
+                    return
+                torinfo = self.__getmeta(url)
+            else:
+                torinfo = torrent_info(uniurl)
+        
             torhash = torinfo.info_hash()
             if torhash.is_all_zeros():
-                return
+                return False
             bthash = str(torhash).upper()
             #print bthash
 
@@ -406,6 +414,9 @@ class XF:
             urlv2="http://lixian.qq.com/handler/xfjson2012.php"
             istr = self.__request(urlv2,data2)
             #print istr
+            if not pid:
+                sys.exit(1)
+
         else:
             data={"down_link":url,\
                     "filename":filename,\
@@ -414,6 +425,21 @@ class XF:
             urlv="http://lixian.qq.com/handler/lixian/add_to_lixian.php"
             istr = self.__request(urlv,data)
             print istr
+
+    def __getmeta(self,magneturl):
+        from libtorrent import session
+        from libtorrent import add_magnet_uri
+        ise = session()
+        parm = {"save_path":"/tmp/"}
+        maghandler = add_magnet_uri(ise,magneturl,parm)
+        beg = int(time.time())
+        while (not maghandler.has_metadata()):
+            #print maghandler.status().state
+            time.sleep(2)
+            if int(time.time()) - beg > 5*60:
+                print "download meta data failed!"
+                sys.exit(-1)
+        return  maghandler.get_torrent_info()
 
     def __toUnicode(self,word):
         if isinstance(word,unicode):
