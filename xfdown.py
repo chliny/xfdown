@@ -203,6 +203,7 @@ class XF:
         else:
             filename=url.split("/")[-1]
         return filename.split("?")[0]
+
     def __getlogin(self):
         self.__request(url ="http://lixian.qq.com/handler/lixian/check_tc.php",data={},savecookie=True)
         urlv = 'http://lixian.qq.com/handler/lixian/do_lixian_login.php'
@@ -258,8 +259,10 @@ class XF:
                             break
                     size="%.1f%s"%(size,_dw)
                     out="%d\t%s\t%s%%\t%s"%(num+1,size,percent,_(self.filename[num]))
+                    if index["dl_status"] == 7:
+                        out=u"\033[41m%s 下载失败！\033[m"%out
                     if num % 2==0 and os.name=='posix':
-                        out="\033[47m%s\033[m"%out
+                        out=u"\033[47m%s\033[m"%out
 
                     _print (out)
                 _print ("=======================END=========================\n")
