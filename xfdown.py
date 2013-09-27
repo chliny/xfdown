@@ -376,14 +376,17 @@ class XF:
             btfilename = "#".join(btfilenames)
             btfilesize = "#".join(btsizes)
 
-            fileinfo = open(url,'rb').read()
+            fileinfo = open(url).read()
+            #fileinfo = self.__toUnicode(fileinfo).encode("utf8")
+            #print fileinfo
             data1={"name":"myfile",
                    "Content-Disposition":"form-data",
                    "filename":filename,
                    "Content-Type":"application/x-bittorrent",
                     "myfile":fileinfo,
                   }
-            #print data1
+            data1={"myfile":fileinfo}
+
             data2={"cmd":"add_bt_task",
                    #多个文件名以#隔开
                   "filename":btfilename,
@@ -398,7 +401,7 @@ class XF:
 
             urlv1="http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo"
             istr = self.__request(urlv1,data1)
-            #print istr
+            print istr
             
             urlv2="http://lixian.qq.com/handler/xfjson2012.php"
             istr = self.__request(urlv2,data2)
@@ -422,7 +425,10 @@ class XF:
         try:
             word = word.decode("utf8")
         except:
-            word = word.decode("GBK")
+            try:
+                word = word.decode("GBK")
+            except:
+                word = word.decode("latin")
 
         return word
 
