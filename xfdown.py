@@ -364,8 +364,11 @@ class XF:
                 if pid:
                     return
                 torinfo = self.__getmeta(url)
+                fileinfo = torinfo.metadata
             else:
                 torinfo = torrent_info(uniurl)
+                #fileinfo = open(url).read()
+                fileinfo = torinfo.metadata()
         
             torhash = torinfo.info_hash()
             if torhash.is_all_zeros():
@@ -377,7 +380,32 @@ class XF:
             btindexs = []
             btsizes = []
             index = 0
+            defaultchose = []
+            aversize = torinfo.total_size() / torinfo.num_files()
+            _print ("序号\t大小\t文件名")
             for fileentry in torinfo.files():
+                name = fileentry.path.split("/")[-1]
+                size = int(fileentry.size)
+                _print ("%d\t%d\t%s" % (index,size,name))
+                if size > aversize:
+                    defaultchose.append(str(index))
+
+                index += 1
+
+            chosestr = raw_input("请选择要下载的文件，空格隔开：（默认：%s)" % " ".join(defaultchose))
+            realchose = chosestr.strip().split()
+            if realchose is None or len(realchose) == 0:
+                realchose = defaultchose
+                    
+            for i in realchose:
+                i = int(i)
+                if i >= index:
+                    _print("序号超出范围！")
+                    if not pid: 
+                        sys.exit(-1)
+                    return False
+
+                fileentry = torinfo.files()[i]
                 btfilenames.append(fileentry.path)
                 btindexs.append(str(index))
                 index += 1
@@ -387,7 +415,6 @@ class XF:
             btfilename = "#".join(btfilenames)
             btfilesize = "#".join(btsizes)
 
-            fileinfo = open(url).read()
             #fileinfo = self.__toUnicode(fileinfo).encode("utf8")
             #print fileinfo
             data1={"name":"myfile",
@@ -427,7 +454,7 @@ class XF:
                     }
             urlv="http://lixian.qq.com/handler/lixian/add_to_lixian.php"
             istr = self.__request(urlv,data)
-            print istr
+            #print istr
 
     def __getmeta(self,magneturl):
         from libtorrent import session
