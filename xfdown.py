@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 from __future__ import division
 
@@ -213,6 +213,16 @@ class XF:
         f.close()
         str = self.__request(url =urlv,data={"g_tk":get_gtk(skey)},savecookie=True)
         return str
+    
+    def __tohumansize(self,size):
+        dw=["B","K","M","G"]
+        for i in range(4):
+            _dw=dw[i]
+            if size>=1024:
+                size=size/1024
+            else:
+                break
+        return "%.1f%s"%(size,_dw)
 
     def __getlist(self):
             """
@@ -250,14 +260,7 @@ class XF:
                     else:
                         percent=str(index['comp_size']/size*100).split(".")[0]
 
-                    dw=["B","K","M","G"]
-                    for i in range(4):
-                        _dw=dw[i]
-                        if size>=1024:
-                            size=size/1024
-                        else:
-                            break
-                    size="%.1f%s"%(size,_dw)
+                    size = self.__tohumansize(size) 
                     out="%d\t%s\t%s%%\t%s"%(num+1,size,percent,_(self.filename[num]))
                     if index["dl_status"] == 7:
                         out=u"\033[41m%s 下载失败！\033[m"%out
@@ -345,7 +348,84 @@ class XF:
             self.__request(urlv,data)
         _print("任务删除完成")
 
-                    
+    def __pushtor(self,torinfo,filename):
+        """
+        上传torrent文件信息及添加BT任务
+        """
+        fileinfo = torinfo.metadata()
+        torhash = torinfo.info_hash()
+        if torhash.is_all_zeros():
+            return False
+        bthash = str(torhash).upper()
+        #print bthash
+
+        btfilenames = []
+        btindexs = []
+        btsizes = []
+        index = 0
+        defaultchose = []
+        aversize = torinfo.total_size() / torinfo.num_files()
+        _print ("序号\t大小\t文件名")
+        for fileentry in torinfo.files():
+            name = fileentry.path.split("/")[-1]
+            size = self.__tohumansize(fileentry.size)
+            _print ("%d\t%s\t%s" % (index,size,name))
+            if int(fileentry.size) >= aversize:
+                defaultchose.append(str(index))
+
+            index += 1
+
+        chosestr = raw_input("请选择要下载的文件，空格隔开：（默认：%s)" % " ".join(defaultchose))
+        realchose = chosestr.strip().split()
+        if realchose is None or len(realchose) == 0:
+            realchose = defaultchose
+                
+        for i in realchose:
+            i = int(i)
+            if i >= index or i < 0:
+                _print("序号超出范围！")
+                return False
+
+            fileentry = torinfo.files()[i]
+            btfilenames.append(fileentry.path)
+            btindexs.append(str(i))
+            btsizes.append(str(fileentry.size))
+
+        btindex = "#".join(btindexs)
+        btfilename = "#".join(btfilenames)
+        btfilesize = "#".join(btsizes)
+
+        #fileinfo = self.__toUnicode(fileinfo).encode("utf8")
+        #print fileinfo
+        data1={"name":"myfile",
+               "Content-Disposition":"form-data",
+               "filename":filename,
+               "Content-Type":"application/x-bittorrent",
+                "myfile":fileinfo,
+              }
+        data1={"myfile":fileinfo}
+
+        data2={"cmd":"add_bt_task",
+               #多个文件名以#隔开
+              "filename":btfilename,
+               #多个文件大小以#隔开
+              "filesize":btfilesize,
+              "hash":bthash,
+               #以#隔开多个文件的offset
+              "index":btindex,
+              "taskname":filename,
+               "r":random.random()
+             }
+
+        urlv1="http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo"
+        istr = self.__request(urlv1,data1)
+        print istr
+        
+        urlv2="http://lixian.qq.com/handler/xfjson2012.php"
+        istr = self.__request(urlv2,data2)
+        #print istr
+        return True
+                
     def __addtask(self):
         if self._addurl == '':
             _print ("请输入下载地址:")
@@ -356,96 +436,19 @@ class XF:
         url = uniurl.encode("utf8")
 
         filename=self.getfilename_url(url)
-        if os.path.isfile(url) or url.startswith("magnet:"):
-            from libtorrent import torrent_info
-            pid  = 1
-            if url.startswith("magnet:"):
-                pid = os.fork()
-                if pid:
-                    return
-                torinfo = self.__getmeta(url)
-                fileinfo = torinfo.metadata
-            else:
-                torinfo = torrent_info(uniurl)
-                #fileinfo = open(url).read()
-                fileinfo = torinfo.metadata()
-        
-            torhash = torinfo.info_hash()
-            if torhash.is_all_zeros():
-                return False
-            bthash = str(torhash).upper()
-            #print bthash
+        from libtorrent import torrent_info
+        if os.path.isfile(url):
+            torinfo = torrent_info(uniurl)
+            #fileinfo = open(url).read()
+            #fileinfo = torinfo.metadata()
+            self.__pushtor(torinfo,filename)
 
-            btfilenames = []
-            btindexs = []
-            btsizes = []
-            index = 0
-            defaultchose = []
-            aversize = torinfo.total_size() / torinfo.num_files()
-            _print ("序号\t大小\t文件名")
-            for fileentry in torinfo.files():
-                name = fileentry.path.split("/")[-1]
-                size = int(fileentry.size)
-                _print ("%d\t%d\t%s" % (index,size,name))
-                if size > aversize:
-                    defaultchose.append(str(index))
-
-                index += 1
-
-            chosestr = raw_input("请选择要下载的文件，空格隔开：（默认：%s)" % " ".join(defaultchose))
-            realchose = chosestr.strip().split()
-            if realchose is None or len(realchose) == 0:
-                realchose = defaultchose
-                    
-            for i in realchose:
-                i = int(i)
-                if i >= index:
-                    _print("序号超出范围！")
-                    if not pid: 
-                        sys.exit(-1)
-                    return False
-
-                fileentry = torinfo.files()[i]
-                btfilenames.append(fileentry.path)
-                btindexs.append(str(index))
-                index += 1
-                btsizes.append(str(fileentry.size))
-
-            btindex = "#".join(btindexs)
-            btfilename = "#".join(btfilenames)
-            btfilesize = "#".join(btsizes)
-
-            #fileinfo = self.__toUnicode(fileinfo).encode("utf8")
-            #print fileinfo
-            data1={"name":"myfile",
-                   "Content-Disposition":"form-data",
-                   "filename":filename,
-                   "Content-Type":"application/x-bittorrent",
-                    "myfile":fileinfo,
-                  }
-            data1={"myfile":fileinfo}
-
-            data2={"cmd":"add_bt_task",
-                   #多个文件名以#隔开
-                  "filename":btfilename,
-                   #多个文件大小以#隔开
-                  "filesize":btfilesize,
-                  "hash":bthash,
-                   #以#隔开多个文件的offset
-                  "index":btindex,
-                  "taskname":filename,
-                   "r":random.random()
-                 }
-
-            urlv1="http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo"
-            istr = self.__request(urlv1,data1)
-            print istr
-            
-            urlv2="http://lixian.qq.com/handler/xfjson2012.php"
-            istr = self.__request(urlv2,data2)
-            #print istr
-            if not pid:
-                sys.exit(1)
+        elif url.startswith("magnet:"):
+            if os.fork():
+                return
+            torinfo = self.__getmeta(url)
+            self.__pushtor(torinfo,filename)
+            sys.exit(0)
 
         else:
             data={"down_link":url,\
