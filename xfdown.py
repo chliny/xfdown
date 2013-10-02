@@ -126,7 +126,7 @@ class XF:
             if self._addurl != '':
                 self.__addtask()
             self.main()
-    def __request(self,url,data=None,savecookie=False):
+    def __request(self,url,data=None,header=None,savecookie=False):
         """
             请求url
         """
@@ -137,8 +137,14 @@ class XF:
             fp=request.urlopen(url)
         try:
             str = fp.read().decode('utf-8')
-        except UnicodeDecodeError:
+
+        except UnicodeDecodeError,e:
+            print "Except! %s" % e #for dobug
             str = fp.read()
+        #for debug
+        except Exception,e:
+            print type(e.reason)
+
         if savecookie == True:
             if hasattr(self,"pswd"):
                 self.cookieJar.save(ignore_discard=True, ignore_expires=True,userinfo="%s#%s"%(self.__qq,self.hashpasswd))
@@ -211,8 +217,8 @@ class XF:
         fi = re.compile('skey="([^"]+)"')
         skey = fi.findall("".join(f.readlines()))[0]
         f.close()
-        str = self.__request(url =urlv,data={"g_tk":get_gtk(skey)},savecookie=True)
-        return str
+        istr = self.__request(url =urlv,data={"g_tk":get_gtk(skey)},savecookie=True)
+        return istr
     
     def __tohumansize(self,size):
         dw=["B","K","M","G"]
@@ -348,7 +354,7 @@ class XF:
             self.__request(urlv,data)
         _print("任务删除完成")
 
-    def __pushtor(self,torinfo,filename):
+    def __pushtor(self,torinfo,filename,url):
         """
         上传torrent文件信息及添加BT任务
         """
@@ -395,16 +401,6 @@ class XF:
         btfilename = "#".join(btfilenames)
         btfilesize = "#".join(btsizes)
 
-        #fileinfo = self.__toUnicode(fileinfo).encode("utf8")
-        #print fileinfo
-        data1={"name":"myfile",
-               "Content-Disposition":"form-data",
-               "filename":filename,
-               "Content-Type":"application/x-bittorrent",
-                "myfile":fileinfo,
-              }
-        data1={"myfile":fileinfo}
-
         data2={"cmd":"add_bt_task",
                #多个文件名以#隔开
               "filename":btfilename,
@@ -416,13 +412,18 @@ class XF:
               "taskname":filename,
                "r":random.random()
              }
-
+        from poster.encode import multipart_encode
+        from poster.streaminghttp import register_openers
+        register_openers()
+        data1,header1 = multipart_encode({"myfile":open(url)})
         urlv1="http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo"
-        istr = self.__request(urlv1,data1)
+        ireq  = request.Request(urlv1,data1,header1)
+        #istr = request.urlopen(ireq).read()
+        istr = self.__request(ireq)
         print istr
         
         urlv2="http://lixian.qq.com/handler/xfjson2012.php"
-        istr = self.__request(urlv2,data2)
+        #istr = self.__request(urlv2,data2)
         #print istr
         return True
                 
@@ -441,13 +442,14 @@ class XF:
             torinfo = torrent_info(uniurl)
             #fileinfo = open(url).read()
             #fileinfo = torinfo.metadata()
-            self.__pushtor(torinfo,filename)
+            self.__pushtor(torinfo,filename,url)
 
         elif url.startswith("magnet:"):
             if os.fork():
                 return
             torinfo = self.__getmeta(url)
-            self.__pushtor(torinfo,filename)
+            #fileinfo = torinfo.metadata()
+            self.__pushtor(torinfo,filename,url)
             sys.exit(0)
 
         else:
@@ -567,7 +569,7 @@ class XF:
                 hashpasswd=self.hashpasswd
             )
         _print ("登录中...")
-        self.__request_login()
+        seef.__request_login()
 
 
 def usage():
