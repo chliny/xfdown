@@ -14,6 +14,7 @@ except:
 import random,time
 import json,os,sys,re,hashlib
 import getopt
+from poster.streaminghttp import register_openers
 
 def _(string):
     try:
@@ -115,18 +116,19 @@ class XF:
                 pass
                 
 
-        opener = request.build_opener(request.HTTPCookieProcessor(self.cookieJar))
+        opener = register_openers()
+        opener.add_handler(request.HTTPCookieProcessor(self.cookieJar))
         opener.addheaders = [('User-Agent', 'Mozilla/5.0'),("Referer","http://lixian.qq.com/main.html")]
         request.install_opener(opener)
-        
 
         if not cookieload:
             self.__Login(True)
         else:
             if self._addurl != '':
                 self.__addtask()
+
             self.main()
-    def __request(self,url,data=None,header=None,savecookie=False):
+    def __request(self,url,data=None,savecookie=False):
         """
             请求url
         """
@@ -237,9 +239,10 @@ class XF:
             urlv = 'http://lixian.qq.com/handler/lixian/get_lixian_list.php'
             res = self.__request(urlv,{})
             res = json.JSONDecoder().decode(res)
+
             if res is None or res["msg"]==_('未登录!'):
-                res=json.JSONDecoder().decode(self.__getlogin())
-                if res["msg"]==_('未登录!'):
+                loginres = json.JSONDecoder().decode(self.__getlogin())
+                if loginres is None or loginres["msg"]==_('未登录!'):
                     self.__Login()
 
                 else:
@@ -358,28 +361,33 @@ class XF:
         """
         上传torrent文件信息及添加BT任务
         """
-        fileinfo = torinfo.metadata()
-        torhash = torinfo.info_hash()
-        if torhash.is_all_zeros():
-            return False
-        bthash = str(torhash).upper()
-        #print bthash
+        from poster.encode import multipart_encode
 
+        data1,header1 = multipart_encode({"myfile":open(url)})
+        ireq  = request.Request("http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo",data1,header1)
+        torinfo  = self.__request(ireq).encode("utf8").strip()
+        starti = torinfo.find('{')
+        torinfo = torinfo[starti:]
+        torinfo = json.JSONDecoder().decode(torinfo)
+
+        bthash = str(torinfo["hash"]).upper()
         btfilenames = []
         btindexs = []
         btsizes = []
-        index = 0
         defaultchose = []
-        aversize = torinfo.total_size() / torinfo.num_files()
-        _print ("序号\t大小\t文件名")
-        for fileentry in torinfo.files():
-            name = fileentry.path.split("/")[-1]
-            size = self.__tohumansize(fileentry.size)
-            _print ("%d\t%s\t%s" % (index,size,name))
-            if int(fileentry.size) >= aversize:
-                defaultchose.append(str(index))
+        totalsize = 0
+        for fileentry in torinfo["files"]:
+            totalsize += fileentry["file_size_ori"]
 
-            index += 1
+        aversize = totalsize / len(torinfo["files"])
+        _print ("序号\t大小\t文件名")
+        for fileentry in torinfo["files"]:
+            name = fileentry["file_name"]
+            size = fileentry["file_size"]
+            index = fileentry["file_index"]
+            _print ("%d\t%s\t%s" % (index,size,name))
+            if fileentry["file_size_ori"] >= aversize:
+                defaultchose.append(str(index))
 
         chosestr = raw_input("请选择要下载的文件，空格隔开：（默认：%s)" % " ".join(defaultchose))
         realchose = chosestr.strip().split()
@@ -388,14 +396,14 @@ class XF:
                 
         for i in realchose:
             i = int(i)
-            if i >= index or i < 0:
+            if i >= len(torinfo["files"]) or i < 0:
                 _print("序号超出范围！")
                 return False
 
-            fileentry = torinfo.files()[i]
-            btfilenames.append(fileentry.path)
+            fileentry = torinfo["files"][i]
+            btfilenames.append(fileentry["file_name"])
             btindexs.append(str(i))
-            btsizes.append(str(fileentry.size))
+            btsizes.append(str(fileentry["file_size_ori"]))
 
         btindex = "#".join(btindexs)
         btfilename = "#".join(btfilenames)
@@ -412,19 +420,9 @@ class XF:
               "taskname":filename,
                "r":random.random()
              }
-        from poster.encode import multipart_encode
-        from poster.streaminghttp import register_openers
-        register_openers()
-        data1,header1 = multipart_encode({"myfile":open(url)})
-        urlv1="http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo"
-        ireq  = request.Request(urlv1,data1,header1)
-        #istr = request.urlopen(ireq).read()
-        istr = self.__request(ireq)
-        print istr
         
         urlv2="http://lixian.qq.com/handler/xfjson2012.php"
-        #istr = self.__request(urlv2,data2)
-        #print istr
+        self.__request(urlv2,data2)
         return True
                 
     def __addtask(self):
@@ -569,7 +567,7 @@ class XF:
                 hashpasswd=self.hashpasswd
             )
         _print ("登录中...")
-        seef.__request_login()
+        self.__request_login()
 
 
 def usage():
