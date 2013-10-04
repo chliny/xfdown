@@ -89,7 +89,6 @@ class XF:
         if sys.version_info >= (3,0):
           H = self.__md5(I + bytes(verifycode[2],encoding="ISO-8859-1"))
         else:
-          #print I+verifycode[2]
           H = self.__md5(I + verifycode[2])
         G = self.__md5(H + verifycode[1].upper())
 
@@ -215,18 +214,8 @@ class XF:
         fi = re.compile('skey="([^"]+)"')
         skey = fi.findall("".join(f.readlines()))[0]
         f.close()
-        istr = self.__request(url =urlv,data={"g_tk":get_gtk(skey)},savecookie=True)
-        return istr
-    
-    def __tohumansize(self,size):
-        dw=["B","K","M","G"]
-        for i in range(4):
-            _dw=dw[i]
-            if size>=1024:
-                size=size/1024
-            else:
-                break
-        return "%.1f%s"%(size,_dw)
+        str = self.__request(url =urlv,data={"g_tk":get_gtk(skey)},savecookie=True)
+        return str
 
     def __getlist(self):
             """
@@ -265,7 +254,15 @@ class XF:
                     else:
                         percent=str(index['comp_size']/size*100).split(".")[0]
 
-                    size = self.__tohumansize(size) 
+                    dw=["B","K","M","G"]
+                    for i in range(4):
+                        _dw=dw[i]
+                        if size>=1024:
+                            size=size/1024
+                        else:
+                            break
+                    size="%.1f%s"%(size,_dw)
+
                     out="%d\t%s\t%s%%\t%s"%(num+1,size,percent,_(self.filename[num]))
                     if index["dl_status"] == 7:
                         out=u"\033[41m%s 下载失败！\033[m"%out
@@ -432,12 +429,6 @@ class XF:
         url = uniurl.encode("utf8")
         if os.path.isfile(url):
             self.__pushtor(url)
-
-        elif url.startswith("magnet:"):
-            if os.fork():
-                return
-            torinfo = self.__getmeta(url)
-            sys.exit(0)
         else:
             filename=self.getfilename_url(url)
             data={"down_link":url,\
@@ -446,21 +437,6 @@ class XF:
                     }
             urlv="http://lixian.qq.com/handler/lixian/add_to_lixian.php"
             self.__request(urlv,data)
-
-    def __getmeta(self,magneturl):
-        from libtorrent import session
-        from libtorrent import add_magnet_uri
-        ise = session()
-        parm = {"save_path":"/tmp/"}
-        maghandler = add_magnet_uri(ise,magneturl,parm)
-        beg = int(time.time())
-        while (not maghandler.has_metadata()):
-            #print maghandler.status().state
-            time.sleep(2)
-            if int(time.time()) - beg > 5*60:
-                print ("download meta data failed!")
-                sys.exit(-1)
-        return  maghandler.get_torrent_info()
 
     def __toUnicode(self,word):
         if isinstance(word,unicode):
@@ -563,11 +539,12 @@ def usage():
     print("  -d <dir>,--downloaddir=<dir>\n\tset the download dir.")
     print("  -p <player>,--player=<player>\n\tset the player.")
     print("  -A <url>,--add=<url>\n\tadd the url to offline task.")
-    print("\n\nsee https://github.com/chliny/xfdown for most newest version and more information")
+    print("\n\nsee https://github.com/kikyous/xfdown for most newest version and more information")
+    print("\n\nor see https://github.com/chliny/xfdown for most newest version and more information")
 try:
     xf = XF()
     if not hasattr(xf,"_downpath"):
-        xf._downpath = os.path.expanduser("~/Video/")
+        xf._downpath = os.path.expanduser("~/Download")
     os.makedirs(xf._downpath) if not os.path.exists(xf._downpath) else None
 
     opts, args = getopt.getopt(sys.argv[1:], "hd:p:A:", ["help", "downloaddir=","player=","add="])
