@@ -114,7 +114,6 @@ class XF:
             except:
                 pass
                 
-
         opener = register_openers()
         opener.add_handler(request.HTTPCookieProcessor(self.cookieJar))
         opener.addheaders = [('User-Agent', 'Mozilla/5.0'),("Referer","http://lixian.qq.com/main.html")]
@@ -360,6 +359,7 @@ class XF:
         ireq  = request.Request("http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo",data1,header1)
         torinfo  = self.__request(ireq).encode("utf8").strip()
         torinfo = "{" + "{".join(torinfo.split("{")[1:])
+
         torinfo = json.JSONDecoder().decode(torinfo)
 
         bthash = str(torinfo["hash"]).upper()
@@ -381,10 +381,12 @@ class XF:
             if fileentry["file_size_ori"] >= aversize:
                 defaultchose.append(str(index))
 
-        chosestr = raw_input("请选择要下载的文件，空格隔开：（默认：%s)" % " ".join(defaultchose))
+        chosestr = raw_input("请选择要下载的文件，空格隔开：（默认:%s，全部:a)" % " ".join(defaultchose))
         realchose = chosestr.strip().split()
         if realchose is None or len(realchose) == 0:
             realchose = defaultchose
+        elif len(realchose) == 1 and realchose[0].lower() == 'a':
+            realchose = range(len(torinfo["files"]))
                 
         for i in realchose:
             i = int(i)
@@ -402,7 +404,7 @@ class XF:
         btfilesize = "#".join(btsizes)
         filename=self.getfilename_url(url)
 
-        data2={"cmd":"add_bt_task",
+        data3={"cmd":"add_bt_task",
                #多个文件名以#隔开
               "filename":btfilename,
                #多个文件大小以#隔开
@@ -414,8 +416,12 @@ class XF:
                "r":random.random()
              }
         
-        urlv2="http://lixian.qq.com/handler/xfjson2012.php"
-        self.__request(urlv2,data2)
+        urlv2 = """http://pinghot.qq.com/pingd?dm=lixian.qq.com.hot&url=/main.html&hottag=ISD.QQXF.XUANFENG_OFFLINE.ADD_BT_TASK&hotx=9999&hoty=9999&rand=%d""" % int(random.random()*100000)
+        self.__request(urlv2)
+
+        urlv3="http://lixian.qq.com/handler/xfjson2012.php"
+        self.__request(urlv3,data3)
+        
         return True
                 
     def __addtask(self):
@@ -425,8 +431,6 @@ class XF:
         else:
             url = self._addurl
 
-        uniurl = self.__toUnicode(url)
-        url = uniurl.encode("utf8")
         if os.path.isfile(url):
             self.__pushtor(url)
         else:
@@ -437,22 +441,6 @@ class XF:
                     }
             urlv="http://lixian.qq.com/handler/lixian/add_to_lixian.php"
             self.__request(urlv,data)
-
-    def __toUnicode(self,word):
-        if isinstance(word,unicode):
-            return word.strip()
-        if not isinstance(word,str):
-            return u""
-        word = word.strip()
-        try:
-            word = word.decode("utf8")
-        except:
-            try:
-                word = word.decode("GBK")
-            except:
-                word = word.decode("latin")
-
-        return word
 
     def __online(self):
         _print("输入需要在线观看的任务序号")
