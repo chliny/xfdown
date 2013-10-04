@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import division
 
@@ -89,7 +89,7 @@ class XF:
         if sys.version_info >= (3,0):
           H = self.__md5(I + bytes(verifycode[2],encoding="ISO-8859-1"))
         else:
-          print I+verifycode[2]
+          #print I+verifycode[2]
           H = self.__md5(I + verifycode[2])
         G = self.__md5(H + verifycode[1].upper())
 
@@ -98,7 +98,7 @@ class XF:
     def __md5(self,item):
         if sys.version_info >= (3,0):
             try:
-              item=item.encode("utf8")
+              item=item.encode("u8")
             except:
               pass
         return hashlib.md5(item).hexdigest().upper()
@@ -140,12 +140,8 @@ class XF:
         try:
             str = fp.read().decode('utf-8')
 
-        except UnicodeDecodeError,e:
-            print "Except! %s" % e #for dobug
+        except UnicodeDecodeError:
             str = fp.read()
-        #for debug
-        except Exception,e:
-            print type(e.reason)
 
         if savecookie == True:
             if hasattr(self,"pswd"):
@@ -357,7 +353,7 @@ class XF:
             self.__request(urlv,data)
         _print("任务删除完成")
 
-    def __pushtor(self,torinfo,filename,url):
+    def __pushtor(self,url):
         """
         上传torrent文件信息及添加BT任务
         """
@@ -366,8 +362,7 @@ class XF:
         data1,header1 = multipart_encode({"myfile":open(url)})
         ireq  = request.Request("http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo",data1,header1)
         torinfo  = self.__request(ireq).encode("utf8").strip()
-        starti = torinfo.find('{')
-        torinfo = torinfo[starti:]
+        torinfo = "{" + "{".join(torinfo.split("{")[1:])
         torinfo = json.JSONDecoder().decode(torinfo)
 
         bthash = str(torinfo["hash"]).upper()
@@ -408,6 +403,7 @@ class XF:
         btindex = "#".join(btindexs)
         btfilename = "#".join(btfilenames)
         btfilesize = "#".join(btsizes)
+        filename=self.getfilename_url(url)
 
         data2={"cmd":"add_bt_task",
                #多个文件名以#隔开
@@ -431,33 +427,25 @@ class XF:
             url=raw_input()
         else:
             url = self._addurl
+
         uniurl = self.__toUnicode(url)
         url = uniurl.encode("utf8")
-
-        filename=self.getfilename_url(url)
-        from libtorrent import torrent_info
         if os.path.isfile(url):
-            torinfo = torrent_info(uniurl)
-            #fileinfo = open(url).read()
-            #fileinfo = torinfo.metadata()
-            self.__pushtor(torinfo,filename,url)
+            self.__pushtor(url)
 
         elif url.startswith("magnet:"):
             if os.fork():
                 return
             torinfo = self.__getmeta(url)
-            #fileinfo = torinfo.metadata()
-            self.__pushtor(torinfo,filename,url)
             sys.exit(0)
-
         else:
+            filename=self.getfilename_url(url)
             data={"down_link":url,\
                     "filename":filename,\
                     "filesize":0,\
                     }
             urlv="http://lixian.qq.com/handler/lixian/add_to_lixian.php"
-            istr = self.__request(urlv,data)
-            #print istr
+            self.__request(urlv,data)
 
     def __getmeta(self,magneturl):
         from libtorrent import session
@@ -470,13 +458,12 @@ class XF:
             #print maghandler.status().state
             time.sleep(2)
             if int(time.time()) - beg > 5*60:
-                print "download meta data failed!"
+                print ("download meta data failed!")
                 sys.exit(-1)
         return  maghandler.get_torrent_info()
 
     def __toUnicode(self,word):
         if isinstance(word,unicode):
-            print word
             return word.strip()
         if not isinstance(word,str):
             return u""
