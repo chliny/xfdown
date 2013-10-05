@@ -371,7 +371,11 @@ class XF:
         defaultchose = []
         totalsize = 0
         for fileentry in torinfo["files"]:
-            totalsize += fileentry["file_size_ori"]
+            try:
+                totalsize += fileentry["file_size_ori"]
+            except:
+                print ("torrent error!")
+                return False
 
         aversize = totalsize / len(torinfo["files"])
         _print ("序号\t大小\t文件名")
@@ -379,7 +383,12 @@ class XF:
             name = fileentry["file_name"]
             size = fileentry["file_size"]
             index = fileentry["file_index"]
-            _print ("%d\t%s\t%s" % (index,size,name))
+            try:
+                _print ("%d\t%s\t%s" % (index,size,name))
+            except:
+                print ("torrent error")
+                return False
+
             if fileentry["file_size_ori"] >= aversize:
                 defaultchose.append(str(index))
 
