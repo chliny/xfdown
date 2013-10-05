@@ -224,14 +224,17 @@ class XF:
                 break
         return "%.1f%s"%(size,_dw)
 
+    def __getrawlist(self):
+        urlv = 'http://lixian.qq.com/handler/lixian/get_lixian_list.php'
+        res = self.__request(urlv,{})
+        res = json.JSONDecoder().decode(res)
+        return res
+
     def __getlist(self):
             """
             得到任务名与hash值
             """
-            urlv = 'http://lixian.qq.com/handler/lixian/get_lixian_list.php'
-            res = self.__request(urlv,{})
-            res = json.JSONDecoder().decode(res)
-
+            res = self.__getrawlist()
             if res is None or res["msg"]==_('未登录!'):
                 loginres = json.JSONDecoder().decode(self.__getlogin())
                 if loginres is None or loginres["msg"]==_('未登录!'):
@@ -361,11 +364,18 @@ class XF:
         except:
             ireq = requests.post(urlv1,files={"myfile":open(url,'rb')})
 
-        torinfo = ireq.text
-        torinfo = "{" + "{".join(torinfo.split("{")[1:])
+        torinfo = "{" + "{".join(ireq.text.split("{")[1:])
 
         torinfo = json.JSONDecoder().decode(torinfo)
-        print (torinfo)
+
+        ires = self.__getrawlist()
+        if ires is None or ires["msg"]==_('未登录!'):
+            self.__Login()
+            ires = self.__getrawlist()
+
+        oldfiles = []
+        for fileinfo in ires["data"]:
+            oldfiles.append(fileinfo["file_name"])
 
         bthash = str(torinfo["hash"]).upper()
         btfilenames = []
@@ -409,9 +419,15 @@ class XF:
                 return False
 
             fileentry = torinfo["files"][i]
-            btfilenames.append(fileentry["file_name"])
+            filename = fileentry["file_name"]
+            if filename in oldfiles:
+                continue
+            btfilenames.append(filename)
             btindexs.append(str(i))
             btsizes.append(str(fileentry["file_size_ori"]))
+
+        if len(btindexs)==0 or len(btfilenames)==0 or len(btsizes)==0:
+            return False
 
         btindex = "#".join(btindexs)
         btfilename = "#".join(btfilenames)
