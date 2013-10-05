@@ -362,9 +362,9 @@ class XF:
         urlv1 = "http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo"
         #data1,header1 = multipart_encode({"myfile":open(url)})
         #ireq  = request.Request("http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo",data1,header1)
-        ireq = requests.post(urlv1,files={"myfile":open(url)})
+        ireq = requests.post(urlv1,files={"myfile":open(url,"rb")})
         #torinfo  = self.__request(ireq.text).encode("utf8").strip()
-        torinfo = ireq.text.encode("utf8").strip()
+        torinfo = ireq.text
         torinfo = "{" + "{".join(torinfo.split("{")[1:])
 
         torinfo = json.JSONDecoder().decode(torinfo)
