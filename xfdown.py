@@ -14,7 +14,6 @@ except:
 import random,time
 import json,os,sys,re,hashlib
 import getopt
-#from poster.streaminghttp import register_openers
 
 def _(string):
     try:
@@ -115,8 +114,6 @@ class XF:
                 pass
                 
         opener = request.build_opener(request.HTTPCookieProcessor(self.cookieJar))
-        #opener = register_openers()
-        #opener.add_handler(request.HTTPCookieProcessor(self.cookieJar))
         opener.addheaders = [('User-Agent', 'Mozilla/5.0'),("Referer","http://lixian.qq.com/main.html")]
         request.install_opener(opener)
 
@@ -356,18 +353,19 @@ class XF:
         """
         上传torrent文件信息及添加BT任务
         """
-        #from poster.encode import multipart_encode
         import requests
 
         urlv1 = "http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo"
-        #data1,header1 = multipart_encode({"myfile":open(url)})
-        #ireq  = request.Request("http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo",data1,header1)
-        ireq = requests.post(urlv1,files={"myfile":open(url,"rb")})
-        #torinfo  = self.__request(ireq.text).encode("utf8").strip()
+        try:
+            ireq = requests.post(urlv1,files={"myfile":open(url,'r')})
+        except:
+            ireq = requests.post(urlv1,files={"myfile":open(url,'rb')})
+
         torinfo = ireq.text
         torinfo = "{" + "{".join(torinfo.split("{")[1:])
 
         torinfo = json.JSONDecoder().decode(torinfo)
+        print (torinfo)
 
         bthash = str(torinfo["hash"]).upper()
         btfilenames = []
