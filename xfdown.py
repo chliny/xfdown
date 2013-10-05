@@ -14,7 +14,6 @@ except:
 import random,time
 import json,os,sys,re,hashlib
 import getopt
-from poster.streaminghttp import register_openers
 
 def _(string):
     try:
@@ -114,8 +113,7 @@ class XF:
             except:
                 pass
                 
-        opener = register_openers()
-        opener.add_handler(request.HTTPCookieProcessor(self.cookieJar))
+        opener = request.build_opener(request.HTTPCookieProcessor(self.cookieJar))
         opener.addheaders = [('User-Agent', 'Mozilla/5.0'),("Referer","http://lixian.qq.com/main.html")]
         request.install_opener(opener)
 
@@ -353,14 +351,19 @@ class XF:
         """
         上传torrent文件信息及添加BT任务
         """
-        from poster.encode import multipart_encode
+        import requests
 
-        data1,header1 = multipart_encode({"myfile":open(url)})
-        ireq  = request.Request("http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo",data1,header1)
-        torinfo  = self.__request(ireq).encode("utf8").strip()
+        urlv1 = "http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo"
+        try:
+            ireq = requests.post(urlv1,files={"myfile":open(url,'r')})
+        except:
+            ireq = requests.post(urlv1,files={"myfile":open(url,'rb')})
+
+        torinfo = ireq.text
         torinfo = "{" + "{".join(torinfo.split("{")[1:])
 
         torinfo = json.JSONDecoder().decode(torinfo)
+        print (torinfo)
 
         bthash = str(torinfo["hash"]).upper()
         btfilenames = []
@@ -369,7 +372,11 @@ class XF:
         defaultchose = []
         totalsize = 0
         for fileentry in torinfo["files"]:
-            totalsize += fileentry["file_size_ori"]
+            try:
+                totalsize += fileentry["file_size_ori"]
+            except Exception as e:
+                print ("torrent error!",e)
+                return False
 
         aversize = totalsize / len(torinfo["files"])
         _print ("序号\t大小\t文件名")
@@ -377,7 +384,12 @@ class XF:
             name = fileentry["file_name"]
             size = fileentry["file_size"]
             index = fileentry["file_index"]
-            _print ("%d\t%s\t%s" % (index,size,name))
+            try:
+                _print ("%d\t%s\t%s" % (index,size,name))
+            except:
+                print ("torrent error")
+                return False
+
             if fileentry["file_size_ori"] >= aversize:
                 defaultchose.append(str(index))
 
