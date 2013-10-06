@@ -352,21 +352,39 @@ class XF:
             self.__request(urlv,data)
         _print("任务删除完成")
 
-    def __pushtor(self,url):
+    def __pushtor(self,myfile,filename):
         """
         上传torrent文件信息及添加BT任务
         """
-        import requests
+        import requests,shutil
 
         urlv1 = "http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo"
+        
+        newfile = os.path.join("/tmp/",self.__md5(filename))
+        newfile = newfile + ".torrent"
+        shutil.copy2(myfile,newfile)
+        myfile = newfile
+
+        if os.path.isfile(myfile):
+            try:
+                ireq = requests.post(urlv1,files={"myfile":open(myfile,'r')})
+            except:
+                try:
+                    ireq = requests.post(urlv1,files={"myfile":open(myfile,'rb')})
+                except Exception as e:
+                    print (e)
+                    return False
+        else:
+            try:
+                ireq = requests.post(urlv1,files={"myfile":myfile})
+            except:
+                return False
+
         try:
-            ireq = requests.post(urlv1,files={"myfile":open(url,'r')})
+            torinfo = "{" + "{".join(ireq.text.split("{")[1:])
+            torinfo = json.JSONDecoder().decode(torinfo)
         except:
-            ireq = requests.post(urlv1,files={"myfile":open(url,'rb')})
-
-        torinfo = "{" + "{".join(ireq.text.split("{")[1:])
-
-        torinfo = json.JSONDecoder().decode(torinfo)
+            return False
 
         ires = self.__getrawlist()
         if ires is None or ires["msg"]==_('未登录!'):
@@ -432,7 +450,6 @@ class XF:
         btindex = "#".join(btindexs)
         btfilename = "#".join(btfilenames)
         btfilesize = "#".join(btsizes)
-        filename=self.getfilename_url(url)
 
         data3={"cmd":"add_bt_task",
                #多个文件名以#隔开
@@ -461,13 +478,17 @@ class XF:
         else:
             url = self._addurl
 
+        filename=self.getfilename_url(url)
         if os.path.isfile(url):
-            self.__pushtor(url)
+            self.__pushtor(url,filename)
 
         elif url.startswith("magnet:"):
             if os.fork():
+                self._addurl=""
                 return
             torinfo = self.__getmeta(url)
+            self.__pushtor(torinfo,filename)
+            self._addurl = ""
             sys.exit(0)
         else:
             filename=self.getfilename_url(url)
@@ -477,6 +498,9 @@ class XF:
                     }
             urlv="http://lixian.qq.com/handler/lixian/add_to_lixian.php"
             self.__request(urlv,data)
+        
+        self._addurl = ""
+        
 
     def __getmeta(self,magneturl):
         from libtorrent import session
