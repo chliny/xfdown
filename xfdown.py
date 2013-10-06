@@ -360,20 +360,16 @@ class XF:
 
         urlv1 = "http://lixian.qq.com/handler/bt_handler.php?cmd=readinfo"
         
-        newfile = os.path.join("/tmp/",self.__md5(filename))
-        newfile = newfile + ".torrent"
-        shutil.copy2(myfile,newfile)
-        myfile = newfile
-
         if os.path.isfile(myfile):
+            newfile = os.path.join("/tmp/",self.__md5(filename))
+            newfile = newfile + ".torrent"
+            shutil.copy2(myfile,newfile)
+            myfile = newfile
             try:
                 ireq = requests.post(urlv1,files={"myfile":open(myfile,'r')})
             except:
-                try:
-                    ireq = requests.post(urlv1,files={"myfile":open(myfile,'rb')})
-                except Exception as e:
-                    print (e)
-                    return False
+                ireq = requests.post(urlv1,files={"myfile":open(myfile,'rb')})
+            os.remove(myfile)
         else:
             try:
                 ireq = requests.post(urlv1,files={"myfile":myfile})
