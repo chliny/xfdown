@@ -597,7 +597,7 @@ def usage():
     print("  -h,--help\tshow this usage and exit.")
     print("  -d <dir>,--downloaddir=<dir>\n\tset the download dir.")
     print("  -p <player>,--player=<player>\n\tset the player.")
-    print("  -A <url>,--add=<url>\n\tadd the url to offline task.")
+    print("  -A <url/torrent>,--add=<url/torrent>\n\tadd the url to offline task.")
     print("\n\nsee https://github.com/chliny/xfdown for most newest version and more information")
 try:
     xf = XF()
