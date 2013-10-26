@@ -474,7 +474,7 @@ class XF:
 
         filename=self.getfilename_url(url)
         if os.path.isfile(url):
-            self.__pushtor(url)
+            self.__pushtor(url,filename)
         else:
             filename=self.getfilename_url(url)
             data={"down_link":url,\
