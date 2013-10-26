@@ -433,10 +433,10 @@ class XF:
                 return False
 
             fileentry = torinfo["files"][i]
-            filename = fileentry["file_name"]
-            if filename in oldfiles:
+            inname = fileentry["file_name"]
+            if inname in oldfiles:
                 continue
-            btfilenames.append(filename)
+            btfilenames.append(inname)
             btindexs.append(str(i))
             btsizes.append(str(fileentry["file_size_ori"]))
 
@@ -445,6 +445,7 @@ class XF:
 
         btindex = "#".join(btindexs)
         btfilename = "#".join(btfilenames)
+        btfilename = self.toUnicode(btfilename).encode("utf8")
         btfilesize = "#".join(btsizes)
 
         data3={"cmd":"add_bt_task",
@@ -467,6 +468,20 @@ class XF:
         
         return True
                 
+    def toUnicode(self,word):
+        if isinstance(word,unicode):
+            return word
+        if not isinstance(word,str):
+            return None
+        if word == None or word == "":
+            return word
+        try:
+            word = word.decode("utf8")
+        except:
+            word = word.decode("gbk")
+        
+        return word
+        
     def __addtask(self):
         if self._addurl == '':
             _print ("请输入下载地址:")
