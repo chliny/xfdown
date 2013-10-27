@@ -119,11 +119,13 @@ class XF:
 
         if not cookieload:
             self.__Login(True)
-        else:
-            if self._addurl != '':
-                self.__addtask()
+       
+        if self._addurl != '':
+            self.__addtask()
 
-            self.main()
+        self.main()
+
+
     def __request(self,url,data=None,savecookie=False):
         """
             请求url
@@ -177,7 +179,7 @@ class XF:
         str = self.__request(url = urlv)
         if str.find(_('登录成功')) != -1:
             self.__getlogin()
-            self.main()
+            #self.main()
         elif str.find(_('验证码不正确')) != -1:
             self.__getverifycode()
             self.__Login(False,True)
@@ -239,7 +241,7 @@ class XF:
                 loginres = json.JSONDecoder().decode(self.__getlogin())
                 if loginres is None or loginres["msg"]==_('未登录!'):
                     self.__Login()
-
+                    self.main()
                 else:
                     self.main()
             elif not res["data"]:
