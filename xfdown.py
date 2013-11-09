@@ -388,8 +388,9 @@ class XF:
             ires = self.__getrawlist()
 
         oldfiles = []
-        for fileinfo in ires["data"]:
-            oldfiles.append(fileinfo["file_name"])
+        if not ires: 
+            for fileinfo in ires["data"]:
+                oldfiles.append(fileinfo["file_name"])
 
         bthash = str(torinfo["hash"]).upper()
         btfilenames = []
