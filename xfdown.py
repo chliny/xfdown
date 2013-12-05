@@ -287,8 +287,10 @@ class XF:
                 num=int(num[0])-1
                 data = {'hash':self.filehash[num],'filename':self.filename[num],'browser':'other'}
                 str = self.__request(urlv,data)
-                self.filehttp[num]=(re.search(r'\"com_url\":\"(.+?)\"\,\"',str).group(1))
-                self.filecom[num]=(re.search(r'\"com_cookie":\"(.+?)\"\,\"',str).group(1))
+                comUrl = re.search(r'\"com_url\":\"(.+?)\"\,\"',str)
+                self.filehttp[num]=(comUrl.group(1)) if comUrl else ()
+                comCookie = re.search(r'\"com_cookie":\"(.+?)\"\,\"',str)
+                self.filecom[num]=(comCookie.group(1)) if comCookie else ()
        
     def __chosetask(self):
         _print ("请选择操作,输入回车(Enter)下载任务\nA添加任务,O在线观看,D删除任务,R刷新离线任务列表")
