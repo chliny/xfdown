@@ -392,7 +392,7 @@ class XF:
             ires = self.__getrawlist()
 
         oldfiles = []
-        if not ires: 
+        if ires: 
             for fileinfo in ires["data"]:
                 oldfiles.append(fileinfo["file_name"])
 
@@ -411,10 +411,11 @@ class XF:
 
         aversize = totalsize / len(torinfo["files"])
         _print ("序号\t大小\t文件名")
+        index = -1
         for fileentry in torinfo["files"]:
             name = fileentry["file_name"]
             size = fileentry["file_size"]
-            index = fileentry["file_index"]
+            index += 1
             try:
                 _print ("%d\t%s\t%s" % (index,size,name))
             except:
