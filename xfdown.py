@@ -392,7 +392,7 @@ class XF:
             ires = self.__getrawlist()
 
         oldfiles = []
-        if ires: 
+        if ires and ires["data"]: 
             for fileinfo in ires["data"]:
                 oldfiles.append(fileinfo["file_name"])
 
