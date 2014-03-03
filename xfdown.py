@@ -119,6 +119,8 @@ class XF:
 
         if not cookieload:
             self.__Login(True)
+        else:
+            self.__Login(False)
        
         if self._addurl != '':
             self.__addtask()
