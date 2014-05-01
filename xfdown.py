@@ -132,16 +132,20 @@ class XF:
         """
             请求url
         """
-        if data:
-            data = parse.urlencode(data).encode('utf-8')
-            fp=request.urlopen(url,data)
-        else:
-            fp=request.urlopen(url)
+        istr = ''
         try:
-            str = fp.read().decode('utf-8')
+            if data:
+                data = parse.urlencode(data).encode('utf-8')
+                fp=request.urlopen(url,data)
+            else:
+                fp=request.urlopen(url)
+            try:
+                istr = fp.read().decode('utf-8')
 
-        except UnicodeDecodeError:
-            str = fp.read()
+            except UnicodeDecodeError:
+                istr = fp.read()
+        except:
+            return False
 
         if savecookie == True:
             if hasattr(self,"pswd"):
@@ -150,7 +154,7 @@ class XF:
                 self.cookieJar.save(ignore_discard=True, ignore_expires=True)
 
         fp.close()
-        return str
+        return istr
     def __getverifycode(self):
 
         urlv = 'http://check.ptlogin2.qq.com/check?uin=%s&appid=567008010&r=%s'%(self.__qq,random.Random().random())
